@@ -53,13 +53,17 @@ export function ProcessingStep({
   useEffect(() => {
     if (processingJob && processingJob.status === "processing") {
       const interval = setInterval(() => {
+        const newProgress = Math.min(processingJob.progress + Math.random() * 8 + 2, 100)
+        const newTimeRemaining = Math.max(0, processingJob.estimatedTimeRemaining - 5)
+
         onProcessingStarted({
           ...processingJob,
-          progress: Math.min(processingJob.progress + Math.random() * 8 + 2, 100),
-          estimatedTimeRemaining: Math.max(0, processingJob.estimatedTimeRemaining - 5),
+          progress: newProgress,
+          estimatedTimeRemaining: newTimeRemaining,
         })
 
-        if (processingJob.progress >= 100) {
+        // Complete when progress reaches 100%
+        if (newProgress >= 100) {
           clearInterval(interval)
           setTimeout(() => {
             onProcessingCompleted()
@@ -247,7 +251,7 @@ export function ProcessingStep({
               {processingJob.status === "processing" && (
                 <div className="space-y-4 max-w-md mx-auto">
                   <div className="flex justify-between text-sm text-gray-600">
-                    <span>Progress</span>
+                    <span>Transcription Progress</span>
                     <span>{Math.round(processingJob.progress)}%</span>
                   </div>
                   <Progress value={processingJob.progress} className="h-3" />

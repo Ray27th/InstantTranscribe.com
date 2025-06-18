@@ -87,6 +87,12 @@ export function MultiStepTranscription() {
     }
   }
 
+  // Calculate step progress (0-100%)
+  const getStepProgress = () => {
+    if (currentStep === 1) return 0 // No progress until first step is completed
+    return ((currentStep - 1) / steps.length) * 100
+  }
+
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       {/* Progress Header */}
@@ -146,10 +152,17 @@ export function MultiStepTranscription() {
 
           <div className="mb-4">
             <div className="flex justify-between text-sm text-gray-600 mb-2">
-              <span>Progress</span>
-              <span>{Math.round((currentStep / steps.length) * 100)}%</span>
+              <span>Overall Progress</span>
+              <span>{Math.round(getStepProgress())}% Complete</span>
             </div>
-            <Progress value={(currentStep / steps.length) * 100} className="h-2" />
+            <Progress value={getStepProgress()} className="h-2" />
+            <p className="text-xs text-gray-500 mt-1 text-center">
+              {currentStep === 1 && "Upload your file to begin"}
+              {currentStep === 2 && "Preview your transcription quality"}
+              {currentStep === 3 && "Complete secure payment"}
+              {currentStep === 4 && "AI processing your file"}
+              {currentStep === 5 && "Download your transcription"}
+            </p>
           </div>
         </CardContent>
       </Card>
