@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Check, Zap, Calculator } from "lucide-react"
+import Link from "next/link"
 
 const pricingExamples = [
   { duration: "5 minutes", cost: "$0.90", useCase: "Short video clip" },
@@ -71,9 +72,11 @@ export function Pricing() {
                 ))}
               </div>
 
-              <Button className="w-full" size="lg">
-                Start Transcribing Now
-              </Button>
+              <Link href="/upload">
+                <Button className="w-full" size="lg">
+                  Start Transcribing Now
+                </Button>
+              </Link>
 
               <p className="text-xs text-gray-500 text-center">
                 No setup fees • No monthly commitments • Cancel anytime
