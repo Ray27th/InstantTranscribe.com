@@ -19,6 +19,18 @@ const STEPS: TranscriptionStep[] = [
   { id: 5, title: "Download", description: "Get your transcription files", status: "pending" },
 ]
 
+// Define transcription result interface
+interface TranscriptionResult {
+  fullTranscript: string
+  confidence: number
+  segments?: Array<{
+    text: string
+    start: number
+    end: number
+  }>
+  speakerCount?: number
+}
+
 export function MultiStepTranscription() {
   const [currentStep, setCurrentStep] = useState(1)
   const [steps, setSteps] = useState<TranscriptionStep[]>(STEPS)
@@ -26,6 +38,7 @@ export function MultiStepTranscription() {
   const [previewTranscript, setPreviewTranscript] = useState<PreviewTranscript | null>(null)
   const [processingJob, setProcessingJob] = useState<ProcessingJob | null>(null)
   const [paymentCompleted, setPaymentCompleted] = useState(false)
+  const [transcriptionResult, setTranscriptionResult] = useState<TranscriptionResult | null>(null)
 
   const updateStepStatus = (stepId: number, status: TranscriptionStep["status"]) => {
     setSteps((prev) => prev.map((step) => (step.id === stepId ? { ...step, status } : step)))
@@ -40,7 +53,24 @@ export function MultiStepTranscription() {
 
   const handleFileUploaded = (file: UploadedFile) => {
     setUploadedFile(file)
+    // Don't automatically go to next step - let user see preview first
+  }
+
+  const handleFileContinue = () => {
+    // This is called when user clicks "Continue with This File" 
     goToNextStep()
+  }
+
+  const handleFileRemoved = () => {
+    setUploadedFile(null)
+    setPreviewTranscript(null)
+    setProcessingJob(null)
+    setPaymentCompleted(false)
+    setTranscriptionResult(null)
+    
+    // Reset all steps to initial state
+    setSteps(STEPS)
+    setCurrentStep(1)
   }
 
   const handlePreviewGenerated = (transcript: PreviewTranscript) => {
@@ -56,10 +86,22 @@ export function MultiStepTranscription() {
     setProcessingJob(job)
   }
 
+  const handleProcessingCompleted = (result: TranscriptionResult) => {
+    setTranscriptionResult(result)
+    goToNextStep()
+  }
+
   const renderCurrentStep = () => {
     switch (currentStep) {
       case 1:
-        return <FileUploadStep onFileUploaded={handleFileUploaded} />
+        return (
+          <FileUploadStep 
+            onFileProcessed={handleFileUploaded} 
+            onFileContinue={handleFileContinue}
+            uploadedFile={uploadedFile}
+            onFileRemoved={handleFileRemoved}
+          />
+        )
       case 2:
         return (
           <PreviewStep
@@ -77,11 +119,17 @@ export function MultiStepTranscription() {
             file={uploadedFile!}
             onProcessingStarted={handleProcessingStarted}
             processingJob={processingJob}
-            onProcessingCompleted={goToNextStep}
+            onProcessingCompleted={handleProcessingCompleted}
           />
         )
       case 5:
-        return <DownloadStep file={uploadedFile!} processingJob={processingJob!} />
+        return (
+          <DownloadStep 
+            file={uploadedFile!} 
+            processingJob={processingJob!} 
+            transcriptionResult={transcriptionResult || undefined}
+          />
+        )
       default:
         return null
     }

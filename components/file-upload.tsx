@@ -1,13 +1,19 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useCallback, useRef } from "react"
+import React, { useState, useCallback, useRef } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Upload, FileVideo, FileAudio, X, CheckCircle, AlertCircle, Download, Loader2, CloudUpload } from "lucide-react"
+import { Upload, FileVideo, FileAudio, X, CheckCircle, AlertCircle, Download, Loader2, CloudUpload } from 'lucide-react'
+import { 
+  getFileDuration, 
+  validateFile, 
+  calculateCost, 
+  formatFileSize, 
+  formatDuration,
+  ALL_SUPPORTED_TYPES 
+} from "@/lib/file-utils"
 
 interface UploadFile {
   id: string
@@ -22,10 +28,10 @@ interface UploadFile {
   error?: string
 }
 
-const SUPPORTED_FORMATS = ["MP4", "MOV", "AVI", "MP3", "WAV"]
-const PRICE_PER_MINUTE = 0.18
+const SUPPORTED_FORMATS = ["MP4", "MOV", "AVI", "MP3", "WAV", "M4A", "AAC"]
 
-export function FileUpload() {
+// Add onFileReady prop
+export function FileUpload({ onFileReady }: { onFileReady?: (fileObj: UploadFile) => void }) {
   const [files, setFiles] = useState<UploadFile[]>([])
   const [isDragActive, setIsDragActive] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -41,37 +47,6 @@ export function FileUpload() {
       setIsDragActive(false)
     }
   }, [])
-
-  const validateFile = (file: File) => {
-    const allowedTypes = [
-      "video/mp4",
-      "video/quicktime",
-      "video/x-msvideo",
-      "audio/mpeg",
-      "audio/wav",
-      "audio/wave",
-      "audio/x-wav",
-    ]
-
-    if (!allowedTypes.includes(file.type)) {
-      return { isValid: false, error: "Unsupported file format" }
-    }
-
-    if (file.size > 2 * 1024 * 1024 * 1024) {
-      // 2GB
-      return { isValid: false, error: "File size exceeds 2GB limit" }
-    }
-
-    return { isValid: true }
-  }
-
-  const estimateDuration = (file: File): Promise<number> => {
-    return new Promise((resolve) => {
-      // Simple estimation based on file size (rough approximation)
-      const estimatedMinutes = Math.max(1, Math.round(file.size / (1024 * 1024 * 2))) // ~2MB per minute
-      resolve(estimatedMinutes)
-    })
-  }
 
   const processFile = async (file: File): Promise<UploadFile> => {
     const validation = validateFile(file)
@@ -91,20 +66,25 @@ export function FileUpload() {
     }
 
     try {
-      const duration = await estimateDuration(file)
-      const cost = duration * PRICE_PER_MINUTE
+      // Get real duration from the file
+      const duration = await getFileDuration(file)
+      const cost = calculateCost(duration)
 
-      return {
+      const processed = {
         id: Date.now().toString() + Math.random(),
         file,
         name: file.name,
         size: file.size,
         type: file.type,
         duration,
-        status: "pending",
+        status: "pending" as const,
         progress: 0,
         cost,
       }
+      
+      // Call the callback for the first file only (for single file upload in flow)
+      if (onFileReady) onFileReady(processed)
+      return processed
     } catch (error) {
       return {
         id: Date.now().toString() + Math.random(),
@@ -115,7 +95,7 @@ export function FileUpload() {
         status: "error",
         progress: 0,
         cost: 0,
-        error: "Failed to process file",
+        error: error instanceof Error ? error.message : "Failed to process file",
       }
     }
   }
@@ -189,14 +169,6 @@ export function FileUpload() {
         }),
       )
     }, 300)
-  }
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return "0 Bytes"
-    const k = 1024
-    const sizes = ["Bytes", "KB", "MB", "GB"]
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
   }
 
   const getFileIcon = (type: string) => {
@@ -298,7 +270,7 @@ export function FileUpload() {
               ref={fileInputRef}
               type="file"
               multiple
-              accept=".mp4,.mov,.avi,.mp3,.wav,video/mp4,video/quicktime,video/x-msvideo,audio/mpeg,audio/wav"
+              accept={ALL_SUPPORTED_TYPES.join(',')}
               onChange={handleFileInput}
               className="hidden"
             />
@@ -311,19 +283,53 @@ export function FileUpload() {
               ))}
             </div>
 
-            <p className="text-sm text-gray-500">Maximum file size: 2GB • $0.18 per minute</p>
+            <div className="text-center space-y-1">
+              <p className="text-sm text-gray-500">Maximum file size: 2GB • $0.18 per minute</p>
+              <p className="text-xs text-gray-400">
+                Supported: Audio (MP3, WAV, M4A, AAC, FLAC) • Video (MP4, MOV, AVI)
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
 
+      {/* Error Summary */}
+      {files.some(f => f.status === 'error') && (
+        <Card className="bg-red-50 border-red-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              <h3 className="font-medium text-red-900">Upload Issues</h3>
+            </div>
+            <div className="space-y-1">
+              {files.filter(f => f.status === 'error').map(file => (
+                <div key={file.id} className="text-sm text-red-700">
+                  <strong>{file.name}:</strong> {file.error}
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 flex gap-2">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={() => setFiles(prev => prev.filter(f => f.status !== 'error'))}
+                className="text-red-700 border-red-300 hover:bg-red-100"
+              >
+                Clear Errors
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Pricing Display */}
-      {files.length > 0 && (
+      {files.filter(f => f.status !== 'error').length > 0 && (
         <Card className="bg-gradient-to-r from-green-50 to-blue-50 border-green-200">
           <CardContent className="p-6 text-center">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Estimated Cost</h3>
             <p className="text-3xl font-bold text-green-600">${totalCost.toFixed(2)}</p>
             <p className="text-sm text-gray-600 mt-2">
-              {files.length} file{files.length !== 1 ? "s" : ""} • Final cost calculated after processing
+              {files.filter(f => f.status !== 'error').length} valid file{files.filter(f => f.status !== 'error').length !== 1 ? "s" : ""} • Based on actual file duration
             </p>
           </CardContent>
         </Card>
@@ -335,6 +341,15 @@ export function FileUpload() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold">Upload Queue ({files.length})</h3>
+              {files.some(f => f.status === 'pending') && (
+                <Button 
+                  size="sm" 
+                  onClick={() => files.filter(f => f.status === 'pending').forEach(f => startUpload(f.id))}
+                  className="px-4"
+                >
+                  Upload All
+                </Button>
+              )}
             </div>
 
             <div className="space-y-4">
@@ -342,18 +357,16 @@ export function FileUpload() {
                 const FileIcon = getFileIcon(file.type)
 
                 return (
-                  <div key={file.id} className="border rounded-lg p-4 space-y-3">
+                  <div key={file.id} className={`border rounded-lg p-4 space-y-3 ${file.status === 'error' ? 'border-red-200 bg-red-50' : ''}`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <FileIcon className="h-8 w-8 text-blue-600 flex-shrink-0" />
+                        <FileIcon className={`h-8 w-8 flex-shrink-0 ${file.status === 'error' ? 'text-red-500' : 'text-blue-600'}`} />
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-gray-900 truncate">{file.name}</p>
                           <div className="flex items-center gap-4 text-sm text-gray-500">
                             <span>{formatFileSize(file.size)}</span>
                             {file.duration && (
-                              <span>
-                                {file.duration} min{file.duration !== 1 ? "s" : ""}
-                              </span>
+                              <span>{formatDuration(file.duration)}</span>
                             )}
                             {file.cost > 0 && (
                               <span className="font-medium text-green-600">${file.cost.toFixed(2)}</span>
@@ -389,7 +402,35 @@ export function FileUpload() {
                       </div>
                     </div>
 
-                    {file.error && <div className="text-sm text-red-600 bg-red-50 p-2 rounded">{file.error}</div>}
+                    {file.error && (
+                      <div className="bg-red-100 border border-red-200 rounded-md p-3">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium text-red-800">Upload Error</p>
+                            <p className="text-sm text-red-700 mt-1">{file.error}</p>
+                            <div className="mt-2 flex gap-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => removeFile(file.id)}
+                                className="text-red-700 border-red-300 hover:bg-red-100 text-xs px-2 py-1"
+                              >
+                                Remove
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => fileInputRef.current?.click()}
+                                className="text-red-700 border-red-300 hover:bg-red-100 text-xs px-2 py-1"
+                              >
+                                Try Another File
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {(file.status === "uploading" || file.status === "processing") && (
                       <div className="space-y-2">
@@ -406,22 +447,42 @@ export function FileUpload() {
                     )}
 
                     {file.status === "completed" && (
-                      <div className="flex gap-2 pt-2">
-                        <Button size="sm" variant="outline">
-                          Download TXT
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          Download DOCX
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          Download SRT
-                        </Button>
+                      <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <span className="text-sm font-medium text-green-800">Transcription Complete!</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-100">
+                            Download TXT
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-100">
+                            Download Report
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-100">
+                            Download SRT
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </div>
                 )
               })}
             </div>
+
+            {/* Upload Tips */}
+            {files.some(f => f.status === 'error') && (
+              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="font-medium text-blue-900 mb-2">💡 Upload Tips</h4>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>• Make sure you're uploading audio or video files only</li>
+                  <li>• Supported formats: MP3, WAV, M4A, AAC, FLAC, MP4, MOV, AVI</li>
+                  <li>• Maximum file size is 2GB</li>
+                  <li>• Clear audio with minimal background noise works best</li>
+                  <li>• Files must be at least 1KB in size</li>
+                </ul>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

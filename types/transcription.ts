@@ -6,13 +6,14 @@ export interface TranscriptionStep {
 }
 
 export interface UploadedFile {
-  id: string
+  id?: string
   file: File
   name: string
   size: number
   type: string
   duration: number
   cost: number
+  url?: string
 }
 
 export interface PreviewTranscript {
@@ -33,4 +34,19 @@ export interface ProcessingJob {
   estimatedTimeRemaining: number
   startedAt: Date
   completedAt?: Date
+}
+
+export interface TranscriptionResult {
+  transcript: string
+  fullTranscript: string
+  confidence: number
+  segments?: Array<{
+    text: string
+    start: number
+    end: number
+  }>
+  speakerCount?: number
+  processingTime?: number
+  duration?: number
+  language?: string
 }

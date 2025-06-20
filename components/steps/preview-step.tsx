@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Play, FileVideo, FileAudio, Clock, Users, Loader2, CheckCircle } from "lucide-react"
 import type { UploadedFile, PreviewTranscript } from "@/types/transcription"
+import { generateRealPreviewTranscript } from "@/lib/transcription-service"
 
 interface PreviewStepProps {
   file: UploadedFile
@@ -23,43 +24,53 @@ export function PreviewStep({ file, onPreviewGenerated, onContinue, transcript }
     setIsGenerating(true)
     setProgress(0)
 
-    // Simulate transcription progress
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval)
-          return 100
-        }
-        return prev + Math.random() * 15 + 5
+    try {
+      // Use the actual file from the UploadedFile object
+      const result = await generateRealPreviewTranscript(file.file, (progress, status) => {
+        setProgress(progress)
+        console.log('Preview progress:', progress, status)
       })
-    }, 200)
 
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 3000))
+      console.log('Real preview result:', result)
 
-    // Mock transcript data
-    const mockTranscript: PreviewTranscript = {
-      text: "Welcome to our presentation today. We'll be discussing the latest developments in artificial intelligence and machine learning. These technologies are revolutionizing how we approach data analysis and automation in various industries.",
-      confidence: 94.2,
-      speakers: [
-        { speaker: "Speaker 1", text: "Welcome to our presentation today.", timestamp: "00:00" },
-        {
-          speaker: "Speaker 1",
-          text: "We'll be discussing the latest developments in artificial intelligence and machine learning.",
-          timestamp: "00:03",
-        },
-        {
-          speaker: "Speaker 1",
-          text: "These technologies are revolutionizing how we approach data analysis and automation in various industries.",
-          timestamp: "00:12",
-        },
-      ],
+      // Convert the real API result to the PreviewTranscript format
+      const realTranscript: PreviewTranscript = {
+        text: result.transcript,
+        confidence: result.confidence * 100, // Convert to percentage
+        speakers: result.segments?.map((segment, index) => ({
+          speaker: `Speaker 1`, // For now, assume single speaker
+          text: segment.text.trim(),
+          timestamp: formatTimestamp(segment.start)
+        })) || [
+          { speaker: "Speaker 1", text: result.transcript, timestamp: "00:00" }
+        ],
+      }
+
+      setProgress(100)
+      setIsGenerating(false)
+      onPreviewGenerated(realTranscript)
+    } catch (error) {
+      console.error('Preview generation failed:', error)
+      
+      // Fallback to demo content if real API fails
+      const fallbackTranscript: PreviewTranscript = {
+        text: "Demo mode: Real transcription failed. Please check your API configuration. This is fallback demo content.",
+        confidence: 85.0,
+        speakers: [
+          { speaker: "Speaker 1", text: "Demo mode: Real transcription failed.", timestamp: "00:00" },
+        ],
+      }
+      
+      setProgress(100)
+      setIsGenerating(false)
+      onPreviewGenerated(fallbackTranscript)
     }
+  }
 
-    clearInterval(interval)
-    setProgress(100)
-    setIsGenerating(false)
-    onPreviewGenerated(mockTranscript)
+  const formatTimestamp = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = Math.floor(seconds % 60)
+    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
   }
 
   const formatFileSize = (bytes: number) => {
