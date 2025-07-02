@@ -427,7 +427,7 @@ export function DownloadStep({ file, processingJob, transcriptionResult }: Downl
               <Button variant="outline" size="sm" onClick={() => window.location.href = '/upload'}>
                 Transcribe Another File
               </Button>
-              <Button variant="outline" size="sm" onClick={() => window.location.href = 'mailto:support@transcribefree.online'}>
+                              <Button variant="outline" size="sm" onClick={() => window.location.href = 'mailto:support@instanttranscribe.com'}>
                 Contact Support
               </Button>
             </div>

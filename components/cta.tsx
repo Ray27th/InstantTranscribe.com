@@ -12,7 +12,7 @@ export function CTA() {
               Ready to transcribe your content?
             </h2>
             <p className="text-xl text-blue-100 max-w-2xl mx-auto">
-              Join thousands of content creators, researchers, and businesses who trust TranscribeFree for fast,
+              Join thousands of content creators, researchers, and businesses who trust InstantTranscribe for fast,
               accurate transcriptions.
             </p>
           </div>
