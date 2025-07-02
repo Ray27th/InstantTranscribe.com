@@ -1,30 +1,31 @@
-# React component creator
+# InstantTranscribe
 
-*Automatically synced with your [v0.dev](https://v0.dev) deployments*
+*AI-Powered Audio & Video Transcription Service*
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/ray27ths-projects/v0-react-component-creator)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/1Cw47IRS1wh)
+[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://instanttranscribe.com)
+[![Built with Next.js](https://img.shields.io/badge/Built%20with-Next.js-black?style=for-the-badge&logo=next.js)](https://nextjs.org)
 
 ## Overview
 
-This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
+InstantTranscribe is a professional AI-powered transcription service that converts audio and video files to accurate text transcriptions instantly. Built with Next.js, OpenAI Whisper, and Stripe for payments.
 
-## Deployment
+## Live Site
 
-Your project is live at:
+**[https://instanttranscribe.com](https://instanttranscribe.com)**
 
-**[https://vercel.com/ray27ths-projects/v0-react-component-creator](https://vercel.com/ray27ths-projects/v0-react-component-creator)**
+## Features
 
-## Build your app
+- 🚀 **Instant Processing**: Lightning-fast AI transcription
+- 🎯 **90%+ Accuracy**: Professional-quality results
+- 💰 **Affordable**: Just $0.18 per minute
+- 📱 **Multiple Formats**: TXT, DOCX, SRT, VTT
+- 🔒 **Secure**: Stripe payment processing
+- 📊 **Analytics**: Built-in usage tracking
 
-Continue building your app on:
+## Tech Stack
 
-**[https://v0.dev/chat/projects/1Cw47IRS1wh](https://v0.dev/chat/projects/1Cw47IRS1wh)**
-
-## How It Works
-
-1. Create and modify your project using [v0.dev](https://v0.dev)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+- **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
+- **AI**: OpenAI Whisper API
+- **Payments**: Stripe integration
+- **Deployment**: Vercel
+- **File Processing**: Built-in audio/video handling
