@@ -98,7 +98,7 @@ The first component deals with the theoretical foundation. This has been establi
 Moving on to the second component, we see how theory translates into practice...`;
     
   } else {
-    transcript = `This is a sample preview of your audio transcription. The AI has analyzed the first 60 seconds of your file and generated this text with high accuracy.
+    transcript = `This is a sample preview of your audio transcription. The AI has analyzed the first 15 seconds of your file and generated this text with high accuracy.
     
 The transcription service uses advanced speech recognition technology to convert your audio into readable text. It can identify different speakers, add proper punctuation, and maintain the natural flow of conversation.
     

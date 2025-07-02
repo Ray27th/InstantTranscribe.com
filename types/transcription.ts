@@ -12,6 +12,7 @@ export interface UploadedFile {
   size: number
   type: string
   duration: number
+  durationSeconds?: number
   cost: number
   url?: string
 }

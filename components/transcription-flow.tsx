@@ -13,7 +13,7 @@ import {
   type TranscriptionResult,
   validateTranscriptionFile
 } from "@/lib/transcription-service";
-import { formatDuration, calculateCost } from "@/lib/file-utils";
+import { formatDuration, calculateCost, formatConfidence } from "@/lib/file-utils";
 
 interface TranscriptionFlowProps {
   onBack: () => void;
@@ -26,16 +26,7 @@ export const TranscriptionFlow = ({ onBack }: TranscriptionFlowProps) => {
   const [cost, setCost] = useState<number>(0);
   const [previewResult, setPreviewResult] = useState<TranscriptionResult | null>(null);
   
-  // Debug: Log when previewResult changes
-  useEffect(() => {
-    if (previewResult) {
-      console.log('previewResult state updated:', {
-        transcript: previewResult.transcript?.substring(0, 100) + '...',
-        confidence: previewResult.confidence,
-        fullTranscript: previewResult.transcript
-      });
-    }
-  }, [previewResult]);
+
   const [fullResult, setFullResult] = useState<TranscriptionResult | null>(null);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [processingStatus, setProcessingStatus] = useState('');
@@ -55,12 +46,6 @@ export const TranscriptionFlow = ({ onBack }: TranscriptionFlowProps) => {
         setProcessingStatus(status);
       })
         .then((result) => {
-          console.log('Frontend received preview result:', {
-            transcript: result.transcript?.substring(0, 100) + '...',
-            confidence: result.confidence,
-            fullTranscript: result.transcript,
-            isRealTranscription: !result.transcript?.includes('demo mode') && !result.transcript?.includes('sample transcription')
-          });
           setPreviewResult(result);
           setCurrentStep('preview-result');
         })
@@ -176,7 +161,7 @@ export const TranscriptionFlow = ({ onBack }: TranscriptionFlowProps) => {
             <CardContent className="p-8 text-center">
               <div className="mb-6">
                 <Loader2 className="w-16 h-16 animate-spin text-blue-600 mx-auto mb-4" />
-                <h2 className="text-2xl font-bold mb-2">Analyzing first 60 seconds...</h2>
+                <h2 className="text-2xl font-bold mb-2">Analyzing first 15 seconds...</h2>
                 <p className="text-gray-600">This free preview lets you check our transcription quality before paying.</p>
               </div>
               
@@ -211,40 +196,30 @@ export const TranscriptionFlow = ({ onBack }: TranscriptionFlowProps) => {
                 <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
                 <h2 className="text-2xl font-bold mb-2">Here's your preview!</h2>
                 <p className="text-gray-600">See the quality and accuracy of our transcription service</p>
-                {processingStatus.includes('Demo mode') && (
-                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-blue-800 text-sm font-medium">
-                      🚀 Demo Mode Active - Add OpenAI API key for real transcription!
-                    </p>
-                  </div>
-                )}
+
               </div>
               
               <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 rounded-lg mb-6 border-l-4 border-blue-500">
                 <div className="flex justify-between items-center mb-4">
                   <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                    Preview • First 60 seconds
+                    Preview • First 15 seconds
                   </Badge>
                   <span className="text-sm text-gray-600">
-                    {(previewResult.confidence * 100).toFixed(1)}% confidence
+                    {formatConfidence(previewResult.confidence)} confidence
                   </span>
                 </div>
                 <div className="prose max-w-none">
                   <pre className="whitespace-pre-wrap text-gray-800 leading-relaxed font-sans">
                     {previewResult.transcript}
                   </pre>
-                  {/* Debug info */}
-                  <div className="mt-4 p-2 bg-red-100 text-xs text-red-800 border rounded">
-                    <strong>DEBUG:</strong> Transcript length: {previewResult.transcript?.length}, 
-                    First 50 chars: "{previewResult.transcript?.substring(0, 50)}..."
-                  </div>
+
                 </div>
               </div>
               
               <div className="text-center">
                 <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-yellow-800 font-semibold">
-                    This is just a preview of the first 60 seconds.
+                    This is just a preview of the first 15 seconds.
                   </p>
                   <p className="text-yellow-700 text-sm mt-1">
                     Unlock the complete transcript with timestamps and enhanced accuracy.

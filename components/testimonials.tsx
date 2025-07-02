@@ -8,7 +8,7 @@ const testimonials = [
     role: "Content Creator",
     company: "YouTube Channel (500K subs)",
     content:
-      "TranscribeFree has revolutionized my workflow. What used to take hours now takes minutes. The accuracy is incredible!",
+      "TranscribeFast has revolutionized my workflow. What used to take hours now takes minutes. The accuracy is incredible!",
     rating: 5,
     avatar: "SJ",
   },

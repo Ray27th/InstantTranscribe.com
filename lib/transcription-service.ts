@@ -76,19 +76,23 @@ This demo shows the complete workflow: file upload, processing with progress tra
 To enable real transcription, simply add your OpenAI API key to the .env.local file as described in the setup guide.`;
   }
 
-  if (isPreview && transcript.length > 500) {
-    const sentences = transcript.split('. ');
-    const previewSentences = sentences.slice(0, Math.ceil(sentences.length * 0.4));
-    transcript = previewSentences.join('. ') + (previewSentences.length < sentences.length ? '...' : '');
+  if (isPreview) {
+    // For previews, limit to approximately 30-50 words (about 15 seconds of speech)
+    const words = transcript.split(' ');
+    if (words.length > 50) {
+      transcript = words.slice(0, 50).join(' ') + '...';
+    }
   }
 
   return {
     transcript: transcript.trim(),
-    confidence: 0.87 + Math.random() * 0.08, // 87-95%
+    confidence: Math.round((0.87 + Math.random() * 0.08) * 1000) / 1000, // 87-95%, cleanly formatted
     processingTime: 2000 + Math.random() * 1000,
     duration: 120 + Math.random() * 180, // 2-5 minutes
     language: 'en',
-    segments: [
+    segments: isPreview ? [
+      { start: 0, end: 15, text: transcript }
+    ] : [
       { start: 0, end: 30, text: transcript.split('.')[0] + '.' },
       { start: 30, end: 60, text: transcript.split('.')[1] + '.' },
       { start: 60, end: 90, text: transcript.split('.')[2] + '.' },
@@ -145,13 +149,7 @@ export const transcribeAudio = async (
     updateProgress(80, "Finalizing transcript...");
 
     const result = await response.json();
-    console.log('API Response received:', { 
-      transcript: result.transcript?.substring(0, 100) + '...', 
-      confidence: result.confidence,
-      isPreview,
-      hasSegments: !!result.segments,
-      fullTranscript: result.transcript // Log the full transcript to see what we're getting
-    });
+
 
     updateProgress(100, "Transcription complete!");
 

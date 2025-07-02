@@ -240,20 +240,24 @@ This demo shows the complete workflow: file upload, processing with progress tra
 To enable real transcription, simply add your OpenAI API key to the .env.local file as described in the setup guide.`;
       }
 
-      if (isPreview && transcript.length > 500) {
-        const sentences = transcript.split('. ');
-        const previewSentences = sentences.slice(0, Math.ceil(sentences.length * 0.4));
-        transcript = previewSentences.join('. ') + (previewSentences.length < sentences.length ? '...' : '');
+      if (isPreview) {
+        // For previews, limit to approximately 30-50 words (about 15 seconds of speech)
+        const words = transcript.split(' ');
+        if (words.length > 50) {
+          transcript = words.slice(0, 50).join(' ') + '...';
+        }
       }
 
       return NextResponse.json({
         transcript: transcript.trim(),
-        confidence: 0.87 + Math.random() * 0.08, // 87-95%
+        confidence: Math.round((0.87 + Math.random() * 0.08) * 1000) / 1000, // 87-95%, cleanly formatted
         processingTime: 1500 + Math.random() * 1000,
         duration: 120 + Math.random() * 180, // 2-5 minutes
         language: 'en',
         isPreview,
-        segments: [
+        segments: isPreview ? [
+          { start: 0, end: 15, text: transcript }
+        ] : [
           { start: 0, end: 30, text: transcript.split('.')[0] + '.' },
           { start: 30, end: 60, text: transcript.split('.')[1] + '.' },
           { start: 60, end: 90, text: transcript.split('.')[2] + '.' },
@@ -294,15 +298,22 @@ To enable real transcription, simply add your OpenAI API key to the .env.local f
       const processingTime = Date.now() - startTime;
 
       // Calculate confidence (Whisper doesn't provide this directly, so we estimate)
-      const estimatedConfidence = 0.85 + Math.random() * 0.1; // 85-95%
+      const rawConfidence = 0.85 + Math.random() * 0.1; // 85-95%
+      const estimatedConfidence = Math.round(rawConfidence * 1000) / 1000; // Round to 3 decimal places max
 
       let responseText = transcription.text;
       
-      // If this is a preview request, we could truncate the text
-      if (isPreview && responseText.length > 1000) {
-        const sentences = responseText.split('. ');
-        const previewSentences = sentences.slice(0, Math.ceil(sentences.length * 0.3)); // First 30%
-        responseText = previewSentences.join('. ') + (previewSentences.length < sentences.length ? '...' : '');
+      // If this is a preview request, show only about 15 seconds worth of content
+      let previewSegments = transcription.segments || [];
+      if (isPreview) {
+        // For previews, limit to approximately 30-50 words (about 15 seconds of speech)
+        const words = responseText.split(' ');
+        if (words.length > 50) {
+          responseText = words.slice(0, 50).join(' ') + '...';
+        }
+        
+        // Also filter segments to only include first 15 seconds
+        previewSegments = (transcription.segments || []).filter(segment => segment.start <= 15);
       }
 
       const apiResponse = {
@@ -312,15 +323,10 @@ To enable real transcription, simply add your OpenAI API key to the .env.local f
         duration: transcription.duration || 0,
         language: transcription.language || 'en',
         isPreview,
-        segments: transcription.segments || [], // Timestamp data
+        segments: previewSegments, // Only first 15 seconds for preview
       };
       
-      console.log('API returning response:', {
-        transcriptPreview: responseText.substring(0, 100) + '...',
-        confidence: estimatedConfidence,
-        isPreview,
-        fullTranscript: responseText
-      });
+
       
       // Track transcription completion
       await trackAnalytics('transcription_completed', {

@@ -13,7 +13,7 @@ import type { TranscriptionStep, UploadedFile, PreviewTranscript, ProcessingJob 
 
 const STEPS: TranscriptionStep[] = [
   { id: 1, title: "Upload File", description: "Select your video or audio file", status: "current" },
-  { id: 2, title: "Preview", description: "See 30-second free transcription", status: "pending" },
+  { id: 2, title: "Preview", description: "See 15-second free transcription", status: "pending" },
   { id: 3, title: "Payment", description: "Secure payment processing", status: "pending" },
   { id: 4, title: "Processing", description: "Full file transcription", status: "pending" },
   { id: 5, title: "Download", description: "Get your transcription files", status: "pending" },

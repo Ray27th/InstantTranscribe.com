@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress"
 import { Play, FileVideo, FileAudio, Clock, Users, Loader2, CheckCircle } from "lucide-react"
 import type { UploadedFile, PreviewTranscript } from "@/types/transcription"
 import { generateRealPreviewTranscript } from "@/lib/transcription-service"
+import { formatDuration } from "@/lib/file-utils"
 
 interface PreviewStepProps {
   file: UploadedFile
@@ -28,15 +29,12 @@ export function PreviewStep({ file, onPreviewGenerated, onContinue, transcript }
       // Use the actual file from the UploadedFile object
       const result = await generateRealPreviewTranscript(file.file, (progress, status) => {
         setProgress(progress)
-        console.log('Preview progress:', progress, status)
       })
-
-      console.log('Real preview result:', result)
 
       // Convert the real API result to the PreviewTranscript format
       const realTranscript: PreviewTranscript = {
         text: result.transcript,
-        confidence: result.confidence * 100, // Convert to percentage
+        confidence: Math.round(result.confidence * 100), // Convert to clean percentage
         speakers: result.segments?.map((segment, index) => ({
           speaker: `Speaker 1`, // For now, assume single speaker
           text: segment.text.trim(),
@@ -51,19 +49,10 @@ export function PreviewStep({ file, onPreviewGenerated, onContinue, transcript }
       onPreviewGenerated(realTranscript)
     } catch (error) {
       console.error('Preview generation failed:', error)
-      
-      // Fallback to demo content if real API fails
-      const fallbackTranscript: PreviewTranscript = {
-        text: "Demo mode: Real transcription failed. Please check your API configuration. This is fallback demo content.",
-        confidence: 85.0,
-        speakers: [
-          { speaker: "Speaker 1", text: "Demo mode: Real transcription failed.", timestamp: "00:00" },
-        ],
-      }
-      
-      setProgress(100)
+      setProgress(0)
       setIsGenerating(false)
-      onPreviewGenerated(fallbackTranscript)
+      // Let the error bubble up to show proper error handling
+      throw error
     }
   }
 
@@ -85,7 +74,7 @@ export function PreviewStep({ file, onPreviewGenerated, onContinue, transcript }
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Step 2: Free 30-Second Preview</CardTitle>
+        <CardTitle>Step 2: Free 15-Second Preview</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* File Info */}
@@ -97,7 +86,7 @@ export function PreviewStep({ file, onPreviewGenerated, onContinue, transcript }
                 <h3 className="font-medium text-gray-900">{file.name}</h3>
                 <div className="flex items-center gap-4 text-sm text-gray-500">
                   <span>{formatFileSize(file.size)}</span>
-                  <span>{file.duration} minutes</span>
+                  <span>{formatDuration(file.duration)}</span>
                   <span className="font-medium text-green-600">${file.cost.toFixed(2)} total</span>
                 </div>
               </div>
@@ -114,9 +103,9 @@ export function PreviewStep({ file, onPreviewGenerated, onContinue, transcript }
                   <Play className="h-8 w-8 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Get a Free 30-Second Preview</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Get a Free 15-Second Preview</h3>
                   <p className="text-gray-600 mb-4">
-                    See the quality and accuracy of our AI transcription before you pay. We'll transcribe the first 30
+                    See the quality and accuracy of our AI transcription before you pay. We'll transcribe the first 15
                     seconds of your file for free.
                   </p>
                   <Button onClick={generatePreview} disabled={isGenerating} size="lg" className="px-8">
@@ -138,7 +127,7 @@ export function PreviewStep({ file, onPreviewGenerated, onContinue, transcript }
               {isGenerating && (
                 <div className="mt-6 space-y-2">
                   <div className="flex justify-between text-sm text-gray-600">
-                    <span>Transcribing first 30 seconds...</span>
+                    <span>Transcribing first 15 seconds...</span>
                     <span>{Math.round(progress)}%</span>
                   </div>
                   <Progress value={progress} className="h-2" />
@@ -164,7 +153,7 @@ export function PreviewStep({ file, onPreviewGenerated, onContinue, transcript }
               <CardContent>
                 <div className="space-y-4">
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-2">Full Text (First 30 seconds):</h4>
+                    <h4 className="font-medium text-gray-900 mb-2">Full Text (First 15 seconds):</h4>
                     <p className="text-gray-700 bg-white p-4 rounded-lg border italic">"{transcript.text}"</p>
                   </div>
 
@@ -196,11 +185,11 @@ export function PreviewStep({ file, onPreviewGenerated, onContinue, transcript }
               <CardContent className="p-6 text-center">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Ready for the Full Transcription?</h3>
                 <p className="text-gray-600 mb-4">
-                  This preview shows just the first 30 seconds. Get the complete transcription of your {file.duration}
-                  -minute file with the same accuracy and speaker identification.
+                  This preview shows just the first 15 seconds. Get the complete transcription of your {formatDuration(file.duration)}
+                  file with the same accuracy and speaker identification.
                 </p>
                 <div className="flex items-center justify-center gap-4 mb-4">
-                  <Badge variant="secondary">Full File: {file.duration} minutes</Badge>
+                  <Badge variant="secondary">Full File: {formatDuration(file.duration)}</Badge>
                   <Badge variant="secondary">Total Cost: ${file.cost.toFixed(2)}</Badge>
                   <Badge variant="secondary">Same {transcript.confidence}% Accuracy</Badge>
                 </div>

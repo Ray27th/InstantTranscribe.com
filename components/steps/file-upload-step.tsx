@@ -16,8 +16,9 @@ import { Badge } from "@/components/ui/badge"
 import { Upload, Loader2, X, Play, FileVideo, FileAudio, RotateCcw, Settings, Zap, CheckCircle, Info } from "lucide-react"
 import type { UploadedFile } from "@/types/transcription"
 import { getOptimalProcessingOptions, convertAudioFormat, canProcessAudio, shouldSkipConversion, createPassThroughConversion, type ProcessingResult } from "@/lib/audio-processor"
-import { getFileDuration, needsConversion, formatFileSize } from '@/lib/file-utils'
+import { getFileDuration, needsConversion, formatFileSize, formatDuration } from '@/lib/file-utils'
 import { createPreviewVersion } from '../../lib/audio-processor'
+import { PricingExplainer } from "@/components/pricing-explainer"
 
 interface FileUploadStepProps {
   onFileProcessed: (file: UploadedFile) => void
@@ -218,7 +219,7 @@ export function FileUploadStep({ onFileProcessed, onFileContinue, uploadedFile, 
     }
   }
 
-  const estimateDuration = (file: File): Promise<number> => {
+  const estimateDuration = (file: File): Promise<{ seconds: number; minutes: number }> => {
     return new Promise((resolve) => {
       if (file.type.startsWith("video/") || file.type.startsWith("audio/")) {
         const mediaElement = file.type.startsWith("video/") 
@@ -234,16 +235,16 @@ export function FileUploadStep({ onFileProcessed, onFileContinue, uploadedFile, 
            URL.revokeObjectURL(mediaElement.src)
            
            // Fallback estimation based on file size and type
-           let estimatedMinutes: number
+           let estimatedSeconds: number
            if (file.type.startsWith("video/")) {
              // For video: roughly 2MB per minute (conservative estimate)
-             estimatedMinutes = Math.max(1, Math.round(file.size / (1024 * 1024 * 2)))
+             estimatedSeconds = Math.max(60, Math.round(file.size / (1024 * 1024 * 2)) * 60)
            } else {
              // For audio: roughly 128KB per minute
-             estimatedMinutes = Math.max(1, Math.round(file.size / (1024 * 128)))
+             estimatedSeconds = Math.max(60, Math.round(file.size / (1024 * 128)) * 60)
            }
            
-           resolve(estimatedMinutes)
+           resolve({ seconds: estimatedSeconds, minutes: estimatedSeconds / 60 })
          }, 10000) // 10 second timeout
         
         mediaElement.onloadedmetadata = () => {
@@ -254,17 +255,18 @@ export function FileUploadStep({ onFileProcessed, onFileContinue, uploadedFile, 
           URL.revokeObjectURL(mediaElement.src)
           
                      if (mediaElement.duration && mediaElement.duration > 0 && !isNaN(mediaElement.duration)) {
-             const durationInMinutes = Math.max(0.1, Math.ceil(mediaElement.duration / 60 * 10) / 10) // Round to 0.1 minutes
-             resolve(durationInMinutes)
+            const durationSeconds = Math.max(1, Math.round(mediaElement.duration))
+            const durationMinutes = durationSeconds / 60
+            resolve({ seconds: durationSeconds, minutes: durationMinutes })
            } else {
              // Duration is 0, NaN, or invalid - use fallback
-             let estimatedMinutes: number
+            let estimatedSeconds: number
              if (file.type.startsWith("video/")) {
-               estimatedMinutes = Math.max(1, Math.round(file.size / (1024 * 1024 * 2)))
+              estimatedSeconds = Math.max(60, Math.round(file.size / (1024 * 1024 * 2)) * 60)
              } else {
-               estimatedMinutes = Math.max(1, Math.round(file.size / (1024 * 128)))
+              estimatedSeconds = Math.max(60, Math.round(file.size / (1024 * 128)) * 60)
              }
-             resolve(estimatedMinutes)
+            resolve({ seconds: estimatedSeconds, minutes: estimatedSeconds / 60 })
            }
         }
         
@@ -276,27 +278,28 @@ export function FileUploadStep({ onFileProcessed, onFileContinue, uploadedFile, 
            URL.revokeObjectURL(mediaElement.src)
            
            // Fallback estimation based on file size
-           let estimatedMinutes: number
+          let estimatedSeconds: number
            if (file.type.startsWith("video/")) {
-             estimatedMinutes = Math.max(1, Math.round(file.size / (1024 * 1024 * 2))) // 2MB per minute for video
+            estimatedSeconds = Math.max(60, Math.round(file.size / (1024 * 1024 * 2)) * 60) // 2MB per minute for video
            } else {
-             estimatedMinutes = Math.max(1, Math.round(file.size / (1024 * 128))) // 128KB per minute for audio
+            estimatedSeconds = Math.max(60, Math.round(file.size / (1024 * 128)) * 60) // 128KB per minute for audio
            }
-           resolve(estimatedMinutes)
+          resolve({ seconds: estimatedSeconds, minutes: estimatedSeconds / 60 })
          }
         
         mediaElement.src = URL.createObjectURL(file)
       } else {
                  // Non-media file fallback
-         const estimatedMinutes = Math.max(1, Math.round(file.size / (1024 * 128)))
-         resolve(estimatedMinutes)
+        const estimatedSeconds = Math.max(60, Math.round(file.size / (1024 * 128)) * 60)
+        resolve({ seconds: estimatedSeconds, minutes: estimatedSeconds / 60 })
       }
     })
   }
 
   const calculateCost = (durationMinutes: number): number => {
-    // $0.006 per minute as per OpenAI pricing
-    return Math.max(0.01, durationMinutes * 0.006) // Minimum $0.01
+    // Round duration to nearest 0.1 minutes (6 seconds) for fair pricing
+    const roundedMinutes = Math.ceil(durationMinutes * 10) / 10; // Rounds to nearest 0.1 minutes
+    return Math.max(0.50, roundedMinutes * PRICE_PER_MINUTE); // Minimum $0.50 (Stripe requirement)
   }
 
   const processFile = async (file: File) => {
@@ -312,7 +315,7 @@ export function FileUploadStep({ onFileProcessed, onFileContinue, uploadedFile, 
 
       // Get duration first
       setProcessingStep('Reading file duration...')
-      const duration = await estimateDuration(file)
+      const durationResult = await estimateDuration(file)
       setProcessingProgress(40)
 
       // Check if file needs conversion
@@ -372,7 +375,7 @@ export function FileUploadStep({ onFileProcessed, onFileContinue, uploadedFile, 
       setProcessingProgress(100)
 
       // Calculate cost based on duration
-      const cost = calculateCost(duration)
+      const cost = calculateCost(durationResult.minutes)
 
       // Create the uploaded file object
       const uploadedFile: UploadedFile = {
@@ -381,7 +384,8 @@ export function FileUploadStep({ onFileProcessed, onFileContinue, uploadedFile, 
         size: processedFile.size,
         type: finalType,
         file: processedFile,
-        duration,
+        duration: durationResult.minutes,
+        durationSeconds: durationResult.seconds,
         cost,
         uploadedAt: new Date(),
         status: 'ready'
@@ -678,7 +682,7 @@ export function FileUploadStep({ onFileProcessed, onFileContinue, uploadedFile, 
                       )}
                     </div>
                     <p className="text-sm text-gray-600">
-                      {formatFileSize(localUploadedFile.size)} • {localUploadedFile.duration} minutes • ${(localUploadedFile.cost || calculateCost(localUploadedFile.duration)).toFixed(2)}
+                                              {formatFileSize(localUploadedFile.size)} • {formatDuration(localUploadedFile.duration)} • ${(localUploadedFile.cost || calculateCost(localUploadedFile.duration)).toFixed(2)}
                     </p>
                   </div>
                 </div>
@@ -686,6 +690,14 @@ export function FileUploadStep({ onFileProcessed, onFileContinue, uploadedFile, 
                   Ready to Process
                 </Badge>
               </div>
+            </div>
+
+            {/* Pricing Information */}
+            <div className="mb-4">
+              <PricingExplainer 
+                duration={localUploadedFile.duration} 
+                cost={localUploadedFile.cost || calculateCost(localUploadedFile.duration)} 
+              />
             </div>
 
             {/* Action Buttons */}
@@ -840,7 +852,7 @@ export function FileUploadStep({ onFileProcessed, onFileContinue, uploadedFile, 
                       </div>
 
                       <p className="text-sm text-gray-500">
-                        Maximum file size: 2GB • $0.18 per minute • Free 30-second preview
+                        Maximum file size: 2GB • $0.18 per minute • Free 15-second preview
                       </p>
                     </>
                   )}
@@ -849,7 +861,7 @@ export function FileUploadStep({ onFileProcessed, onFileContinue, uploadedFile, 
                     key={fileInputKey}
                     ref={fileInputRef}
                     type="file"
-                    accept=".mp4,.mov,.avi,.mp3,.wav,video/mp4,video/quicktime,video/x-msvideo,audio/mpeg,audio/wav"
+                    accept=".mp4,.mov,.avi,.mp3,.wav,.m4a,.aac,.flac,.ogg,.webm,video/mp4,video/quicktime,video/x-msvideo,audio/mpeg,audio/wav,audio/m4a,audio/x-m4a,audio/mp4,audio/aac,audio/flac,audio/ogg,audio/webm"
                     onChange={handleFileInput}
                     className="hidden"
                     disabled={isProcessing || isConverting}
