@@ -12,9 +12,9 @@ export function Footer() {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">TF</span>
+                <span className="text-white font-bold text-sm">IT</span>
               </div>
-              <span className="text-xl font-bold text-white">TranscribeFree</span>
+              <span className="text-xl font-bold text-white">InstantTranscribe</span>
             </div>
             <p className="text-sm text-gray-400 leading-relaxed">
               Fast, accurate, and affordable AI-powered transcription service for all your video and audio content.
@@ -109,11 +109,11 @@ export function Footer() {
         <Separator className="my-8 bg-gray-800" />
 
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-gray-400">© 2024 TranscribeFree.online. All rights reserved.</p>
+          <p className="text-sm text-gray-400">© 2024 InstantTranscribe.com. All rights reserved.</p>
 
           <div className="flex items-center gap-4">
             <Link
-              href="mailto:hello@transcribefree.online"
+              href="mailto:hello@instanttranscribe.com"
               className="text-gray-400 hover:text-white transition-colors"
             >
               <Mail className="h-5 w-5" />
