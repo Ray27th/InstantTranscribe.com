@@ -177,6 +177,42 @@ export function PaymentStep({ file, onPaymentCompleted }: PaymentStepProps) {
   // Check if Stripe is properly configured
   const isStripeConfigured = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY && 
                            process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.length > 0
+  
+  // Check if we're in demo mode (you can set this via env var)
+  const isDemoMode = process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
+
+  // Pure demo mode - simulate payment without Stripe
+  if (isDemoMode) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Step 3: Demo Payment</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CreditCard className="h-8 w-8 text-green-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Demo Mode Active</h3>
+            <p className="text-gray-600 mb-6">
+              This is a demonstration. In production, users would pay ${file.cost.toFixed(2)} here via Stripe.
+            </p>
+            <div className="bg-blue-50 p-4 rounded-lg mb-6">
+              <h4 className="font-medium text-blue-900 mb-2">Order Summary:</h4>
+              <div className="text-sm text-blue-800 space-y-1">
+                <div>File: {file.name}</div>
+                <div>Duration: {formatDuration(file.duration)}</div>
+                <div>Cost: ${file.cost.toFixed(2)} ($0.18/min)</div>
+              </div>
+            </div>
+            <Button onClick={onPaymentCompleted} size="lg" className="px-8">
+              Simulate Payment Success
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   if (!isStripeConfigured) {
     return (
@@ -271,6 +307,21 @@ export function PaymentStep({ file, onPaymentCompleted }: PaymentStepProps) {
                   <li>• Secure processing and automatic file deletion</li>
                 </ul>
               </div>
+
+              {/* Demo Mode Notice */}
+              {process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.includes('pk_test_') && (
+                <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                  <h4 className="font-medium text-yellow-900 mb-2">🧪 Demo Mode Active</h4>
+                  <p className="text-sm text-yellow-800 mb-3">
+                    This is test mode - no real charges will be made. Use these test cards:
+                  </p>
+                  <div className="text-xs space-y-1 font-mono text-yellow-700">
+                    <div>💳 Success: <span className="font-bold">4242 4242 4242 4242</span></div>
+                    <div>❌ Declined: <span className="font-bold">4000 0000 0000 0002</span></div>
+                    <div>📅 Expiry: Any future date • CVC: Any 3 digits</div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
