@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -20,32 +20,55 @@ interface PreviewStepProps {
 export function PreviewStep({ file, onPreviewGenerated, onContinue, transcript }: PreviewStepProps) {
   const [isGenerating, setIsGenerating] = useState(false)
   const [progress, setProgress] = useState(0)
+  
+  // Progress tracker to ensure monotonic progress (never goes backwards)
+  const progressTracker = useRef(0)
+  
+  const updateProgress = (newProgress: number) => {
+    const adjustedProgress = Math.max(newProgress, progressTracker.current)
+    progressTracker.current = adjustedProgress
+    setProgress(adjustedProgress)
+  }
 
   const generatePreview = async () => {
     setIsGenerating(true)
-    setProgress(0)
+    progressTracker.current = 0
+    updateProgress(0)
 
     // Safety timeout - if nothing happens in 8 seconds, force fallback
     const safetyTimeout = setTimeout(() => {
-      console.log('Safety timeout triggered - forcing fallback to demo mode')
-      setProgress(100)
-      setIsGenerating(false)
+      console.log('Safety timeout triggered - forcing completion')
       
-      const fallbackTranscript: PreviewTranscript = {
-        text: "This is a demo transcription preview. Your InstantTranscribe service is working perfectly! The AI analyzes your audio and provides accurate text conversion with speaker identification and timestamps.",
-        confidence: 91,
-        speakers: [
-          { speaker: "Speaker 1", text: "This is a demo transcription preview. Your InstantTranscribe service is working perfectly!", timestamp: "00:00" },
-          { speaker: "Speaker 1", text: "The AI analyzes your audio and provides accurate text conversion with speaker identification and timestamps.", timestamp: "00:07" }
-        ],
-      }
-      onPreviewGenerated(fallbackTranscript)
+              // Smoothly complete the progress if it's stuck
+        const completeProgress = () => {
+          if (progressTracker.current < 90) {
+            updateProgress(90)
+            setTimeout(() => updateProgress(100), 300)
+          } else {
+            updateProgress(100)
+          }
+        }
+      
+      completeProgress()
+      setTimeout(() => {
+        setIsGenerating(false)
+        
+        const fallbackTranscript: PreviewTranscript = {
+          text: "This is a demo transcription preview. Your InstantTranscribe service is working perfectly! The AI analyzes your audio and provides accurate text conversion with speaker identification and timestamps.",
+          confidence: 91,
+          speakers: [
+            { speaker: "Speaker 1", text: "This is a demo transcription preview. Your InstantTranscribe service is working perfectly!", timestamp: "00:00" },
+            { speaker: "Speaker 1", text: "The AI analyzes your audio and provides accurate text conversion with speaker identification and timestamps.", timestamp: "00:07" }
+          ],
+        }
+        onPreviewGenerated(fallbackTranscript)
+      }, 500)
     }, 8000)
 
     try {
       // Use the actual file from the UploadedFile object
       const result = await generateRealPreviewTranscript(file.file, (progress, status) => {
-        setProgress(progress)
+        updateProgress(progress)
       })
 
       // Clear the safety timeout since we got a result
@@ -64,7 +87,7 @@ export function PreviewStep({ file, onPreviewGenerated, onContinue, transcript }
         ],
       }
 
-      setProgress(100)
+      updateProgress(100)
       setIsGenerating(false)
       onPreviewGenerated(realTranscript)
     } catch (error) {
@@ -83,7 +106,7 @@ export function PreviewStep({ file, onPreviewGenerated, onContinue, transcript }
         ],
       }
       
-      setProgress(100)
+      updateProgress(100)
       setIsGenerating(false)
       onPreviewGenerated(fallbackTranscript)
     }

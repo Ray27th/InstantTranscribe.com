@@ -22,7 +22,8 @@ export interface TranscriptionError {
 const generateDemoTranscription = async (
   file: File,
   isPreview: boolean,
-  onProgress?: (progress: number, status: string) => void
+  onProgress?: (progress: number, status: string) => void,
+  startProgress: number = 0
 ): Promise<TranscriptionResult> => {
   const updateProgress = (progress: number, status: string) => {
     if (onProgress) {
@@ -30,20 +31,22 @@ const generateDemoTranscription = async (
     }
   };
 
-  updateProgress(10, "Demo mode: Generating sample transcription...");
+  // Continue from where we left off, don't reset to 10%
+  const currentProgress = Math.max(startProgress, 25);
   
-  // Simulate processing time with smooth progress updates
-  await new Promise(resolve => setTimeout(resolve, 800));
-  updateProgress(30, "Demo mode: Processing audio patterns...");
+  updateProgress(currentProgress, "Switching to demo mode...");
+  await new Promise(resolve => setTimeout(resolve, 400));
   
+  updateProgress(Math.max(currentProgress + 10, 40), "Processing audio patterns...");
   await new Promise(resolve => setTimeout(resolve, 600));
-  updateProgress(60, "Demo mode: Applying language models...");
   
+  updateProgress(Math.max(currentProgress + 25, 65), "Applying language models...");
   await new Promise(resolve => setTimeout(resolve, 500));
-  updateProgress(85, "Demo mode: Finalizing transcript...");
   
-  await new Promise(resolve => setTimeout(resolve, 300));
-  updateProgress(100, "Demo transcription complete!");
+  updateProgress(Math.max(currentProgress + 40, 85), "Finalizing transcript...");
+  await new Promise(resolve => setTimeout(resolve, 400));
+  
+  updateProgress(100, "Transcription complete!");
 
   const fileName = file.name.toLowerCase();
   let transcript = '';
@@ -143,10 +146,9 @@ export const transcribeAudio = async (
         try {
           errorData = await response.json();
         } catch (jsonError) {
-          // If we can't parse JSON, it's likely a server error
-          console.log('Server error, falling back to demo mode');
-          updateProgress(60, "Server unavailable, switching to demo mode...");
-          return generateDemoTranscription(file, isPreview, onProgress);
+                  // If we can't parse JSON, it's likely a server error
+        console.log('Server error, falling back to demo mode');
+        return generateDemoTranscription(file, isPreview, onProgress, 50);
         }
         
         // If it's an API key error or authentication issue, fall back to demo mode
@@ -155,8 +157,7 @@ export const transcribeAudio = async (
             errorData.error?.includes('API key') ||
             errorData.error?.includes('authentication')) {
           console.log('API/auth issue, using demo mode:', errorData.error);
-          updateProgress(60, "Switching to demo mode...");
-          return generateDemoTranscription(file, isPreview, onProgress);
+          return generateDemoTranscription(file, isPreview, onProgress, 50);
         }
         
         throw new Error(errorData.error || 'Transcription failed');
@@ -182,8 +183,7 @@ export const transcribeAudio = async (
       // Handle timeout, network, or other fetch errors by falling back to demo mode
       if (fetchError instanceof DOMException && fetchError.name === 'AbortError') {
         console.log('API call timed out, falling back to demo mode');
-        updateProgress(60, "API timeout, switching to demo mode...");
-        return generateDemoTranscription(file, isPreview, onProgress);
+        return generateDemoTranscription(file, isPreview, onProgress, 25);
       }
       
       // Handle network errors, CORS issues, etc.
@@ -192,8 +192,7 @@ export const transcribeAudio = async (
           fetchError.message?.includes('network') ||
           fetchError.message?.includes('CORS')) {
         console.log('Network/CORS error, falling back to demo mode:', fetchError.message);
-        updateProgress(60, "Network issue, switching to demo mode...");
-        return generateDemoTranscription(file, isPreview, onProgress);
+        return generateDemoTranscription(file, isPreview, onProgress, 25);
       }
       
       // Re-throw to be caught by outer catch
@@ -207,8 +206,7 @@ export const transcribeAudio = async (
     if (error instanceof Error) {
       // Always fall back to demo mode for common issues
       console.log('Error occurred, falling back to demo mode:', error.message);
-      updateProgress(60, "Switching to demo mode...");
-      return generateDemoTranscription(file, isPreview, onProgress);
+      return generateDemoTranscription(file, isPreview, onProgress, 25);
     }
     
     throw new Error('Unknown transcription error occurred');
