@@ -53,10 +53,12 @@ export function Hero() {
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
-            <Button variant="outline" size="lg" className="px-8 py-4 text-lg font-semibold">
-              <Play className="mr-2 h-5 w-5" />
-              Watch Demo
-            </Button>
+            <Link href="/upload">
+              <Button variant="outline" size="lg" className="px-8 py-4 text-lg font-semibold">
+                <Play className="mr-2 h-5 w-5" />
+                Try Live Demo
+              </Button>
+            </Link>
           </div>
 
           {/* Trust indicators */}

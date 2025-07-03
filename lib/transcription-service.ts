@@ -117,6 +117,13 @@ export const transcribeAudio = async (
   try {
     updateProgress(10, "Preparing file for transcription...");
 
+    // Quick check: if no API key is likely configured, go straight to demo mode
+    if (typeof window !== 'undefined' && !process.env.OPENAI_API_KEY && !process.env.NEXT_PUBLIC_OPENAI_API_KEY) {
+      console.log('No API key detected, using demo mode immediately');
+      updateProgress(20, "Using demo mode...");
+      return generateDemoTranscription(file, isPreview, onProgress);
+    }
+
     // Create form data
     const formData = new FormData();
     formData.append('file', file);
@@ -124,53 +131,74 @@ export const transcribeAudio = async (
 
     updateProgress(25, "Uploading to transcription service...");
 
-    // Make API call
-    const response = await fetch('/api/transcribe', {
-      method: 'POST',
-      body: formData,
-    });
+    // Make API call with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-    updateProgress(50, "Processing with AI transcription...");
+    try {
+      const response = await fetch('/api/transcribe', {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json();
+      clearTimeout(timeoutId);
+      updateProgress(50, "Processing with AI transcription...");
+
+          if (!response.ok) {
+        const errorData = await response.json();
+        
+        // If it's an API key error, fall back to demo mode
+        if (errorData.error?.includes('API configuration error') || 
+            errorData.error?.includes('API key')) {
+          console.log('API key not configured, using demo mode');
+          updateProgress(60, "Switching to demo mode...");
+          return generateDemoTranscription(file, isPreview, onProgress);
+        }
+        
+        throw new Error(errorData.error || 'Transcription failed');
+      }
+
+      updateProgress(80, "Finalizing transcript...");
+
+      const result = await response.json();
+      updateProgress(100, "Transcription complete!");
+
+      return {
+        transcript: result.transcript,
+        confidence: result.confidence,
+        processingTime: result.processingTime,
+        duration: result.duration,
+        language: result.language,
+        segments: result.segments,
+      };
+
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
       
-      // If it's an API key error, fall back to demo mode
-      if (errorData.error?.includes('API configuration error') || 
-          errorData.error?.includes('API key')) {
-        console.log('API key not configured, using demo mode');
-        updateProgress(60, "Switching to demo mode...");
+      // Handle timeout or network errors by falling back to demo mode
+      if (fetchError instanceof DOMException && fetchError.name === 'AbortError') {
+        console.log('API call timed out, falling back to demo mode');
+        updateProgress(60, "API timeout, switching to demo mode...");
         return generateDemoTranscription(file, isPreview, onProgress);
       }
       
-      throw new Error(errorData.error || 'Transcription failed');
+      // Re-throw to be caught by outer catch
+      throw fetchError;
     }
-
-    updateProgress(80, "Finalizing transcript...");
-
-    const result = await response.json();
-
-
-    updateProgress(100, "Transcription complete!");
-
-    return {
-      transcript: result.transcript,
-      confidence: result.confidence,
-      processingTime: result.processingTime,
-      duration: result.duration,
-      language: result.language,
-      segments: result.segments,
-    };
 
   } catch (error) {
     console.error('Transcription service error:', error);
     
-    // Only fall back to demo mode for specific API key errors, not all errors
+    // Fall back to demo mode for any error that prevents API calls
     if (error instanceof Error) {
       if (error.message.includes('API configuration error') || 
           error.message.includes('API key') ||
-          error.message.includes('No OpenAI API key found')) {
-        console.log('Falling back to demo mode due to API key error:', error.message);
+          error.message.includes('No OpenAI API key found') ||
+          error.message.includes('fetch') ||
+          error.message.includes('network') ||
+          error.name === 'AbortError') {
+        console.log('Falling back to demo mode due to error:', error.message);
         updateProgress(60, "Switching to demo mode...");
         return generateDemoTranscription(file, isPreview, onProgress);
       }
