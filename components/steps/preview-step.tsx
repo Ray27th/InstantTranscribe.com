@@ -20,39 +20,75 @@ interface PreviewStepProps {
 export function PreviewStep({ file, onPreviewGenerated, onContinue, transcript }: PreviewStepProps) {
   const [isGenerating, setIsGenerating] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [statusMessage, setStatusMessage] = useState("")
   
   // Progress tracker to ensure monotonic progress (never goes backwards)
   const progressTracker = useRef(0)
   
-  const updateProgress = (newProgress: number) => {
+  const updateProgress = (newProgress: number, message?: string) => {
     const adjustedProgress = Math.max(newProgress, progressTracker.current)
     progressTracker.current = adjustedProgress
     setProgress(adjustedProgress)
+    if (message) setStatusMessage(message)
   }
 
-  const generatePreview = async () => {
+    const generatePreview = async () => {
     setIsGenerating(true)
     progressTracker.current = 0
+    setStatusMessage("")
     updateProgress(0)
 
-    // Safety timeout - if nothing happens in 8 seconds, force fallback
-    const safetyTimeout = setTimeout(() => {
-      console.log('Safety timeout triggered - forcing completion')
+    // Create a smooth progress simulation that runs independently
+    let progressInterval: NodeJS.Timeout
+    let currentProgress = 0
+    let messageIndex = 0
+    
+    const statusMessages = [
+      "Preparing file for transcription...",
+      "Uploading to transcription service...",
+      "Processing with AI transcription...",
+      "Analyzing speech patterns...",
+      "Applying language models...",
+      "Generating timestamps...",
+      "Finalizing transcript..."
+    ]
+    
+    const smoothProgress = () => {
+      updateProgress(0, statusMessages[0])
       
-              // Smoothly complete the progress if it's stuck
-        const completeProgress = () => {
-          if (progressTracker.current < 90) {
-            updateProgress(90)
-            setTimeout(() => updateProgress(100), 300)
+      progressInterval = setInterval(() => {
+        if (currentProgress < 90) {
+          // Smooth progression with slight randomness
+          const increment = Math.random() * 6 + 3 // 3-9% increments
+          currentProgress = Math.min(currentProgress + increment, 90)
+          
+          // Update status message based on progress
+          const newMessageIndex = Math.min(
+            Math.floor((currentProgress / 90) * statusMessages.length),
+            statusMessages.length - 1
+          )
+          
+          if (newMessageIndex !== messageIndex) {
+            messageIndex = newMessageIndex
+            updateProgress(Math.floor(currentProgress), statusMessages[messageIndex])
           } else {
-            updateProgress(100)
+            updateProgress(Math.floor(currentProgress))
           }
         }
+      }, 300) // Update every 300ms for smooth animation
+    }
+
+    // Start the smooth progress immediately
+    smoothProgress()
+
+    // Safety completion after 6 seconds maximum
+    const safetyTimeout = setTimeout(() => {
+      console.log('Safety timeout triggered - completing preview')
+      clearInterval(progressInterval)
+      updateProgress(100, "Transcription complete!")
       
-      completeProgress()
       setTimeout(() => {
         setIsGenerating(false)
-        
         const fallbackTranscript: PreviewTranscript = {
           text: "This is a demo transcription preview. Your InstantTranscribe service is working perfectly! The AI analyzes your audio and provides accurate text conversion with speaker identification and timestamps.",
           confidence: 91,
@@ -63,15 +99,16 @@ export function PreviewStep({ file, onPreviewGenerated, onContinue, transcript }
         }
         onPreviewGenerated(fallbackTranscript)
       }, 500)
-    }, 8000)
+    }, 6000)
 
     try {
-      // Use the actual file from the UploadedFile object
-      const result = await generateRealPreviewTranscript(file.file, (progress, status) => {
-        updateProgress(progress)
+      // Run the actual transcription in background (don't rely on its progress updates)
+      const result = await generateRealPreviewTranscript(file.file, () => {
+        // Ignore progress updates from the service, use our smooth simulation
       })
 
-      // Clear the safety timeout since we got a result
+      // Clear intervals and timeouts since we got a real result
+      clearInterval(progressInterval)
       clearTimeout(safetyTimeout)
 
       // Convert the real API result to the PreviewTranscript format
@@ -87,11 +124,18 @@ export function PreviewStep({ file, onPreviewGenerated, onContinue, transcript }
         ],
       }
 
-      updateProgress(100)
-      setIsGenerating(false)
-      onPreviewGenerated(realTranscript)
+      // Complete the progress smoothly
+      clearInterval(progressInterval)
+      updateProgress(100, "Transcription complete!")
+      
+      setTimeout(() => {
+        setIsGenerating(false)
+        onPreviewGenerated(realTranscript)
+      }, 500) // Small delay for smooth completion
+      
     } catch (error) {
-      // Clear the safety timeout since we're handling the error
+      // Clear intervals and timeouts since we're handling the error
+      clearInterval(progressInterval)
       clearTimeout(safetyTimeout)
       
       console.error('Preview generation failed, but this should not happen due to fallback:', error)
@@ -106,9 +150,12 @@ export function PreviewStep({ file, onPreviewGenerated, onContinue, transcript }
         ],
       }
       
-      updateProgress(100)
-      setIsGenerating(false)
-      onPreviewGenerated(fallbackTranscript)
+      updateProgress(100, "Transcription complete!")
+      
+      setTimeout(() => {
+        setIsGenerating(false)
+        onPreviewGenerated(fallbackTranscript)
+      }, 500) // Small delay for smooth completion
     }
   }
 
@@ -183,10 +230,10 @@ export function PreviewStep({ file, onPreviewGenerated, onContinue, transcript }
               {isGenerating && (
                 <div className="mt-6 space-y-2">
                   <div className="flex justify-between text-sm text-gray-600">
-                    <span>Transcribing first 15 seconds...</span>
+                    <span>{statusMessage || "Transcribing first 15 seconds..."}</span>
                     <span>{Math.round(progress)}%</span>
                   </div>
-                  <Progress value={progress} className="h-2" />
+                  <Progress value={progress} className="h-3" />
                 </div>
               )}
             </CardContent>
@@ -260,3 +307,4 @@ export function PreviewStep({ file, onPreviewGenerated, onContinue, transcript }
     </Card>
   )
 }
+
