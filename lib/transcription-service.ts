@@ -32,17 +32,17 @@ const generateDemoTranscription = async (
 
   updateProgress(10, "Demo mode: Generating sample transcription...");
   
-  // Simulate processing time
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  // Simulate processing time with smooth progress updates
+  await new Promise(resolve => setTimeout(resolve, 800));
+  updateProgress(30, "Demo mode: Processing audio patterns...");
   
-  updateProgress(50, "Demo mode: Processing audio patterns...");
-  
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  updateProgress(90, "Demo mode: Finalizing transcript...");
+  await new Promise(resolve => setTimeout(resolve, 600));
+  updateProgress(60, "Demo mode: Applying language models...");
   
   await new Promise(resolve => setTimeout(resolve, 500));
+  updateProgress(85, "Demo mode: Finalizing transcript...");
   
+  await new Promise(resolve => setTimeout(resolve, 300));
   updateProgress(100, "Demo transcription complete!");
 
   const fileName = file.name.toLowerCase();
