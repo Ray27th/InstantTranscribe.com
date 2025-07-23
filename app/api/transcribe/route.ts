@@ -233,11 +233,11 @@ Absolutely. One of the main challenges has been adapting to rapid technological 
       } else {
         transcript = `This is a sample transcription generated in demo mode. Your audio transcription service is working perfectly! 
 
-The AI has analyzed your audio file and converted the speech to text with high accuracy. In production mode with an OpenAI API key, you would get real transcriptions of your actual audio content.
+Our advanced AI transcription model has analyzed your audio file and converted the speech to text with exceptional accuracy. In production mode, you would receive real transcriptions of your actual audio content using our proprietary speech recognition technology.
 
-This demo shows the complete workflow: file upload, processing with progress tracking, preview generation, payment simulation, and final transcript delivery with multiple download formats.
+This demo shows the complete workflow: file upload, processing with progress tracking, preview generation, secure payment processing, and final transcript delivery with multiple download formats.
 
-To enable real transcription, simply add your OpenAI API key to the .env.local file as described in the setup guide.`;
+Experience professional-grade transcription with speaker identification, timestamps, and industry-leading accuracy for all your audio content.`;
       }
 
       if (isPreview) {

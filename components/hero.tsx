@@ -1,3 +1,5 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Zap, Clock, Target, ArrowRight, Play } from "lucide-react"
@@ -53,12 +55,18 @@ export function Hero() {
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
-            <Link href="/upload">
-              <Button variant="outline" size="lg" className="px-8 py-4 text-lg font-semibold">
-                <Play className="mr-2 h-5 w-5" />
-                Try Live Demo
-              </Button>
-            </Link>
+            <Button 
+              variant="outline" 
+              size="lg" 
+              className="px-8 py-4 text-lg font-semibold"
+              onClick={() => {
+                const videoSection = document.querySelector('#video-demo');
+                videoSection?.scrollIntoView({ behavior: 'smooth' });
+              }}
+            >
+              <Play className="mr-2 h-5 w-5" />
+              Watch Demo
+            </Button>
           </div>
 
           {/* Trust indicators */}
