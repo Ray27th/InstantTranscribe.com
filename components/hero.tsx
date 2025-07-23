@@ -22,13 +22,14 @@ export function Hero() {
           {/* Main headline */}
           <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl lg:text-7xl">
             <span className="block text-blue-600">InstantTranscribe</span>
-            AI-Powered Transcription
+            <span className="block">Instant Transcribe AI Service</span>
           </h1>
 
           {/* Subheadline */}
           <p className="mt-6 text-lg leading-8 text-gray-600 sm:text-xl max-w-3xl mx-auto">
-            Convert your video and audio files to accurate text transcriptions instantly. Professional quality AI
-            transcription with 90%+ accuracy at just $0.18 per minute.
+            InstantTranscribe converts your video and audio files to accurate text transcriptions instantly. 
+            Our instant transcribe service delivers professional quality AI transcription with 90%+ accuracy 
+            at just $0.18 per minute. Experience the fastest audio to text conversion available.
           </p>
 
           {/* Key benefits */}
